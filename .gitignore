@@ -1,0 +1,9 @@
+env/
+.cursor/
+.env
+files/
+01 challenge/.cache/
+files/chapter_one.txt
+/langchain_docs
+/00 lecture
+.DS_Store
