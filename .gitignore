@@ -4,9 +4,7 @@ env/
 files/
 01 challenge/.cache/
 files/chapter_one.txt
-/langchain_docs
 /00 lecture
 .DS_Store
 /scripts
-📖_Sample_Chapter_FewShotPromptTemplate.md
-📚_Documentation_Strategy_Guide.md
+/challenge/.cache
