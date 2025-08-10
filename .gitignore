@@ -1,6 +1,9 @@
 env/
 .cursor/
 .env
+.streamlit/
+.cache/
+.claude/
 files/
 01 challenge/.cache/
 files/chapter_one.txt
