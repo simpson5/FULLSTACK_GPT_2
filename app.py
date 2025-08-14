@@ -18,6 +18,7 @@ from langchain.chat_models import ChatOpenAI  # OpenAI 채팅 모델
 from langchain.callbacks.base import BaseCallbackHandler  # 콜백 핸들러 베이스 클래스
 from langchain.memory import ConversationBufferMemory  # 대화 기록 메모리
 import streamlit as st  # Streamlit 웹 앱 프레임워크
+import os  # 파일 시스템 작업용
 
 # Streamlit 페이지 설정 - 브라우저 탭에 표시될 제목과 아이콘 설정
 st.set_page_config(
@@ -77,6 +78,12 @@ def embed_file(file):
     # 업로드된 파일을 로컬에 저장하는 과정
     file_content = file.read()  # 파일 내용을 바이너리로 읽기
     file_size_kb = len(file_content) / 1024  # KB 단위로 파일 크기 계산
+    
+    # 디렉토리가 없으면 생성
+    import os
+    os.makedirs("./.cache/files", exist_ok=True)
+    os.makedirs("./.cache/embeddings", exist_ok=True)
+    
     file_path = f"./.cache/files/{file.name}"  # 저장할 경로 설정
     # 파일을 바이너리 쓰기 모드로 열어 저장
     with open(file_path, "wb") as f:
