@@ -79,10 +79,9 @@ def embed_file(file):
     file_content = file.read()  # 파일 내용을 바이너리로 읽기
     file_size_kb = len(file_content) / 1024  # KB 단위로 파일 크기 계산
     
-    # 디렉토리가 없으면 생성
-    import os
+    # 디렉토리가 없으면 생성 (Streamlit Cloud 호환)
     os.makedirs("./.cache/files", exist_ok=True)
-    os.makedirs("./.cache/embeddings", exist_ok=True)
+    os.makedirs(f"./.cache/embeddings/{file.name}", exist_ok=True)
     
     file_path = f"./.cache/files/{file.name}"  # 저장할 경로 설정
     # 파일을 바이너리 쓰기 모드로 열어 저장
