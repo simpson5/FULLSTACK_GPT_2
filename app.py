@@ -1,3 +1,11 @@
+###
+# 오늘의 강의: 풀스택 GPT: #7.0부터 ~ #7.10까지
+# 이전 과제에서 구현한 RAG 파이프라인을 Streamlit으로 마이그레이션합니다.
+# 파일 업로드 및 채팅 기록을 구현합니다.
+# 사용자가 자체 OpenAI API 키를 사용하도록 허용하고, st.sidebar 내부의 st.input에서 이를 로드합니다.
+# st.sidebar를 사용하여 스트림릿 앱의 코드와 함께 깃허브 리포지토리에 링크를 넣습니다.
+###
+
 # LangChain 관련 imports - 각 컴포넌트의 역할을 이해하는 것이 중요
 from langchain.prompts import ChatPromptTemplate  # 프롬프트 템플릿 생성용
 from langchain.document_loaders import UnstructuredFileLoader  # 다양한 파일 형식 로드
