@@ -56,14 +56,8 @@ class ChatCallbackHandler(BaseCallbackHandler):
         self.message_box.markdown(self.message)  # 화면의 메시지 박스 업데이트
 
 
-# ChatOpenAI 모델 초기화
-# temperature: 0.1로 설정하여 더 일관된 응답 생성 (0=결정적, 1=창의적)
-# streaming: True로 설정하여 실시간 스트리밍 응답 활성화
-# callbacks: 각 질문마다 동적으로 생성됩니다
-llm = ChatOpenAI(
-    temperature=0.1,
-    streaming=True,
-)
+# ChatOpenAI 모델은 이제 각 함수에서 필요시 동적으로 생성
+# (세션의 API 키를 사용하여 생성)
 
 
 # ConversationBufferMemory 초기화 - LangChain 메모리 시스템
@@ -200,7 +194,14 @@ def summarize_document(docs):
     
     # 각 청크별 요약 생성
     chunk_summaries = []
-    summary_llm = ChatOpenAI(temperature=0.1)
+    # API 키가 세션에 있을 때만 요약 가능
+    if not st.session_state.get("api_key"):
+        return "❌ API Key가 설정되지 않았습니다. 먼저 API Key를 입력해주세요."
+    
+    summary_llm = ChatOpenAI(
+        temperature=0.1,
+        openai_api_key=st.session_state["api_key"]
+    )
     
     # 청크를 그룹화하여 처리 (5개씩)
     for i in range(0, len(docs), 5):
@@ -265,25 +266,75 @@ st.title("DocumentGPT")
 
 # 환영 메시지와 사용 안내 (파일이 업로드되지 않았을 때만 표시)
 if "file_uploaded" not in st.session_state or not st.session_state.file_uploaded:
-    st.markdown(
-        """
-        환영합니다!
+    if not st.session_state.get("api_key"):
+        st.markdown(
+            """
+            ## 🚀 시작하기
+            
+            1. 먼저 사이드바에서 **OpenAI API Key**를 입력해주세요
+            2. API Key 발급: [OpenAI Platform](https://platform.openai.com/api-keys)
+            3. API Key 입력 후 문서를 업로드하세요
+            """
+        )
+    else:
+        st.markdown(
+            """
+            ## 📄 환영합니다!
 
-        사이드바에서 파일을 업로드하세요.
+            사이드바에서 문서를 업로드하여 시작하세요.
 
-        업로드한 문서에 대해 질문해 보세요!
-    """
-    )
+            업로드한 문서에 대해 무엇이든 질문해보세요!
+            """
+        )
 
-# 사이드바에 파일 업로더 위젯 생성
-# with 구문을 사용하여 사이드바 컨텍스트 내에서 위젯 생성
+# 사이드바에 API 키 입력 및 파일 업로더 위젯 생성
 with st.sidebar:
-    st.markdown("## Document Upload")
+    st.markdown("## 🔑 API Configuration")
     
-    file = st.file_uploader(
-        "Upload a .txt .pdf or .docx file",
-        type=["pdf", "txt", "docx"],  # 허용된 파일 형식 지정
+    # API 키 입력 (세션 상태에 저장하여 유지)
+    api_key = st.text_input(
+        "OpenAI API Key",
+        value=st.session_state.get("api_key", ""),
+        type="password",
+        placeholder="sk-...",
+        help="https://platform.openai.com/api-keys 에서 발급받을 수 있습니다."
     )
+    
+    # API 키 저장 및 모델 초기화
+    if api_key:
+        st.session_state["api_key"] = api_key
+        import os
+        os.environ["OPENAI_API_KEY"] = api_key
+        
+        # API 키 유효성 검증
+        try:
+            # 간단한 테스트로 API 키 확인
+            test_llm = ChatOpenAI(
+                temperature=0.1,
+                openai_api_key=api_key
+            )
+            st.success("✅ API Key 설정 완료!")
+        except Exception as e:
+            st.error(f"❌ API Key 오류: 유효하지 않은 API Key입니다.")
+            api_key = None
+            if "api_key" in st.session_state:
+                del st.session_state["api_key"]
+    else:
+        if "api_key" in st.session_state:
+            del st.session_state["api_key"]
+    
+    st.markdown("---")
+    st.markdown("## 📄 Document Upload")
+    
+    # API 키가 없으면 파일 업로드 비활성화
+    if not api_key:
+        st.warning("⚠️ 먼저 OpenAI API Key를 입력해주세요!")
+        file = None
+    else:
+        file = st.file_uploader(
+            "Upload a .txt .pdf or .docx file",
+            type=["pdf", "txt", "docx"],  # 허용된 파일 형식 지정
+        )
     
     # 문서가 업로드된 경우 요약 버튼 표시
     if file:
@@ -356,11 +407,17 @@ if file:
         # 현재 질문에 대한 콜백 핸들러 생성 (메모리 저장 포함)
         callback_handler = ChatCallbackHandler(question=message)
         
+        # API 키 확인 후 LLM 인스턴스 생성
+        if not st.session_state.get("api_key"):
+            st.error("❌ API Key가 설정되지 않았습니다!")
+            st.stop()
+        
         # 질문별 LLM 인스턴스 생성 (콜백 핸들러 포함)
         llm_with_callback = ChatOpenAI(
             temperature=0.1,
             streaming=True,
             callbacks=[callback_handler],
+            openai_api_key=st.session_state["api_key"],  # 세션의 API 키 사용
         )
         
         # LCEL(LangChain Expression Language) 체인 구성 (메모리 포함)
