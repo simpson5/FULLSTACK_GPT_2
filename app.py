@@ -74,7 +74,22 @@ memory = ConversationBufferMemory(
 # 동일한 파일에 대해서는 함수를 재실행하지 않고 캐시된 결과 반환
 # show_spinner: 처리 중 표시할 메시지
 @st.cache_data(show_spinner="Embedding file...")
-def embed_file(file):
+def embed_file(file, api_key):
+    """
+    파일을 임베딩하고 벡터 스토어를 생성합니다.
+    
+    Parameters:
+    - file: 업로드된 파일 객체
+    - api_key: OpenAI API 키 (캐시 무효화를 위해 매개변수로 전달)
+    
+    Returns:
+    - retriever: FAISS 검색기
+    - docs: 문서 청크 리스트  
+    - file_info: 파일 처리 정보 딕셔너리
+    """
+    # API 키 유효성 사전 검증
+    if not api_key or not api_key.startswith('sk-'):
+        raise ValueError("유효하지 않은 OpenAI API 키입니다. 'sk-'로 시작하는 키를 입력해주세요.")
     # 업로드된 파일을 로컬에 저장하는 과정
     file_content = file.read()  # 파일 내용을 바이너리로 읽기
     file_size_kb = len(file_content) / 1024  # KB 단위로 파일 크기 계산
@@ -111,10 +126,15 @@ def embed_file(file):
     # 문서를 로드하고 설정한 splitter로 분할
     docs = loader.load_and_split(text_splitter=splitter)
     
-    # OpenAI 임베딩 모델 초기화
-    embeddings = OpenAIEmbeddings()
-    # 캐시 기능이 추가된 임베딩 생성 - 동일한 텍스트는 재계산하지 않음
-    cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
+    # OpenAI 임베딩 모델 초기화 (명시적 API 키 사용)
+    try:
+        embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+        # 캐시 기능이 추가된 임베딩 생성 - 동일한 텍스트는 재계산하지 않음
+        cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
+    except Exception as e:
+        st.error(f"❌ OpenAI API 인증 실패: {str(e)}")
+        st.error("🔑 API 키를 확인하고 다시 시도해주세요.")
+        raise e
     
     # FAISS 벡터스토어 생성 - 빠른 유사도 검색을 위한 벡터 DB
     vectorstore = FAISS.from_documents(docs, cached_embeddings)
@@ -365,7 +385,15 @@ if file:
     st.session_state.file_uploaded = True
     
     # 파일을 임베딩하고 검색기, 문서 청크, 파일 정보 생성 (캐시됨)
-    retriever, docs, file_info = embed_file(file)
+    try:
+        retriever, docs, file_info = embed_file(file, st.session_state["api_key"])
+    except Exception as e:
+        st.error("💥 문서 처리 중 오류가 발생했습니다.")
+        st.error("🔧 해결 방법:")
+        st.error("1️⃣ API 키가 올바른지 확인")
+        st.error("2️⃣ OpenAI 계정에 충분한 크레딧이 있는지 확인")
+        st.error("3️⃣ 인터넷 연결 상태 확인")
+        st.stop()
     
     # 문서 정보 표시
     st.success(f"📄 **{file.name}** ({file_info['size_kb']}KB) 업로드 완료!")
